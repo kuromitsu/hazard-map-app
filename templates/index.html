@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>災害リスクチェッカー</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style> #map { height: 100vh; } </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // 地図の初期化（東京駅を中心に設定）
+        var map = L.map('map').setView([35.681236, 139.767125], 13);
+
+        // OpenStreetMapを表示
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // クリックイベント
+        map.on('click', function(e) {
+            var lat = e.latlng.lat;
+            var lng = e.latlng.lng;
+
+            // GoのAPIに問い合わせ
+            fetch('/check-risk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat: lat, lng: lng })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // ポップアップを表示
+                L.popup()
+                    .setLatLng(e.latlng)
+                    .setContent("<b>判定: " + data.risk + "</b><br>" + data.details)
+                    .openOn(map);
+            });
+        });
+    </script>
+</body>
+</html>
