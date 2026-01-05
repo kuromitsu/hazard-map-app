@@ -41,7 +41,9 @@ func main() {
 
 		// 1. 外部APIを叩いて住所を特定（Goから外部へのHTTPリクエスト）
 		// Heartrails Geo API (無料・登録不要) を使用
-		apiURL := fmt.Sprintf("http://geoapi.heartrails.com/api/json?method=searchByGeo&x=%f&y=%f", loc.Lng, loc.Lat)
+		// method=searchByGeo を method=searchByGeoLocation に変更
+		apiURL := fmt.Sprintf("https://geoapi.heartrails.com/api/json?method=searchByGeoLocation&x=%f&y=%f", loc.Lng, loc.Lat)
+
 		resp, err := http.Get(apiURL)
 		
 		address := "住所特定不能（海上など）"
