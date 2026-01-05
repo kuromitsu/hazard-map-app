@@ -2,26 +2,57 @@
 <html>
 <head>
     <title>災害リスクチェッカー</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <style> #map { height: 100vh; } </style>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { height: 100vh; width: 100%; }
+        /* ポップアップの文字サイズ調整 */
+        .leaflet-popup-content { font-size: 14px; line-height: 1.6; }
+    </style>
 </head>
 <body>
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
-        // 地図の初期化（東京駅を中心に設定）
-        var map = L.map('map').setView([35.681236, 139.767125], 13);
+        // 1. ベースの地図（標準）
+        var baseMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18
+        });
 
-        // OpenStreetMapを表示
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+        // 2. 国土交通省 ハザードマップ（洪水浸水想定区域）
+        // opacity: 0.6 で少し透けさせて、下の地図が見えるようにする
+        var floodLayer = L.tileLayer('https://disaportaldata.gsi.go.jp/raster/01_flood_l2_shinsuishin_data/{z}/{x}/{y}.png', {
+            attribution: '出典：国土交通省ハザードマップ',
+            opacity: 0.6,
+            maxZoom: 17
+        });
 
-        // クリックイベント
+        // マップの初期化（レイヤーを重ねて表示）
+        var map = L.map('map', {
+            center: [35.681236, 139.767125], // 東京駅
+            zoom: 13,
+            layers: [baseMap, floodLayer] // ここで2枚重ねる
+        });
+
+        // レイヤー切り替えコントロールを追加（右上に表示）
+        var baseMaps = { "標準地図": baseMap };
+        var overlayMaps = { "洪水リスク": floodLayer };
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+        // クリック時の動作
         map.on('click', function(e) {
             var lat = e.latlng.lat;
             var lng = e.latlng.lng;
+
+            // クリック地点にポップアップを開く（ロード中表示）
+            var popup = L.popup()
+                .setLatLng(e.latlng)
+                .setContent("調査中...")
+                .openOn(map);
 
             // GoのAPIに問い合わせ
             fetch('/check-risk', {
@@ -31,13 +62,20 @@
             })
             .then(response => response.json())
             .then(data => {
-                // ポップアップを表示
-                L.popup()
-                    .setLatLng(e.latlng)
-                    .setContent("<b>判定: " + data.risk + "</b><br>" + data.details)
-                    .openOn(map);
+                // ポップアップの内容を更新
+                var content = `
+                    <b>📍 ${data.address}</b><br>
+                    <hr style="margin: 5px 0;">
+                    地図上の<span style="color:red; font-weight:bold;">赤いエリア</span>は<br>
+                    浸水リスクがある場所です。
+                `;
+                popup.setContent(content);
+            })
+            .catch(err => {
+                popup.setContent("エラーが発生しました");
             });
         });
     </script>
 </body>
 </html>
+
